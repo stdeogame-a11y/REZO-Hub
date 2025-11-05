@@ -1,274 +1,194 @@
--- REZO HUB - Menu Manager
-local MenuManager = {}
+-- REZO HUB COMPLETO para Delta
+-- Copia y pega ESTE script completo en Delta
+
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
 local player = Players.LocalPlayer
-local RezoHub = nil
 
-function MenuManager:Initialize(config)
-    self.Config = config
-    RezoHub = _G.RezoHub or require(script.Parent.MainScript)
-    self:CreateInterface()
-    self:SetupDragFunctionality()
+-- CONFIGURACIÓN PRINCIPAL
+local RezoHub = {
+    Config = {
+        AutoFarmFruits = false,
+        AutoCollectChests = false,
+        AutoTrainSkills = false,
+        FruitRange = 50,
+        ChestRange = 30,
+        EnemyRange = 25,
+        DebugMode = true,
+        Version = "1.0"
+    },
+    Modules = {}
+}
+
+-- FUNCIÓN DE INICIALIZACIÓN
+function RezoHub:Initialize()
+    -- Esperar al personaje
+    if not player.Character then
+        player.CharacterAdded:Wait()
+    end
+    
+    print("🎮 REZO HUB Iniciando...")
+    
+    -- Crear interfaz
+    self:CreateGUI()
+    
+    -- Iniciar sistemas
+    self:StartSystems()
+    
+    self:ShowWelcomeMessage()
 end
 
-function MenuManager:CreateInterface()
-    -- GUI Principal
-    self.ScreenGui = Instance.new("ScreenGui")
-    self.ScreenGui.Name = "RezoHubGUI"
-    self.ScreenGui.Parent = player:WaitForChild("PlayerGui")
+-- INTERFAZ GRÁFICA
+function RezoHub:CreateGUI()
+    -- Crear GUI principal
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "RezoHubGUI"
+    screenGui.Parent = game:GetService("CoreGui") or player:WaitForChild("PlayerGui")
     
-    -- Marco Principal
-    self.MainFrame = Instance.new("Frame")
-    self.MainFrame.Name = "MainFrame"
-    self.MainFrame.Size = UDim2.new(0, 400, 0, 500)
-    self.MainFrame.Position = UDim2.new(0.5, -200, 0.5, -250)
-    self.MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-    self.MainFrame.BorderSizePixel = 0
-    self.MainFrame.ClipsDescendants = true
-    self.MainFrame.Parent = self.ScreenGui
+    -- Marco principal
+    local mainFrame = Instance.new("Frame")
+    mainFrame.Name = "MainFrame"
+    mainFrame.Size = UDim2.new(0, 350, 0, 400)
+    mainFrame.Position = UDim2.new(0.5, -175, 0.5, -200)
+    mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+    mainFrame.BorderSizePixel = 0
+    mainFrame.Parent = screenGui
     
-    -- Efecto de sombra
-    local shadow = Instance.new("UIStroke")
-    shadow.Color = Color3.fromRGB(0, 255, 255)
-    shadow.Thickness = 2
-    shadow.Parent = self.MainFrame
+    -- Efecto de borde
+    local uiStroke = Instance.new("UIStroke")
+    uiStroke.Color = Color3.fromRGB(0, 255, 255)
+    uiStroke.Thickness = 2
+    uiStroke.Parent = mainFrame
     
     -- Header
-    self:CreateHeader()
-    
-    -- Panel de Navegación
-    self:CreateNavigation()
-    
-    -- Panel de Contenido
-    self:CreateContentPanel()
-    
-    -- Footer
-    self:CreateFooter()
-end
-
-function MenuManager:CreateHeader()
     local header = Instance.new("Frame")
     header.Name = "Header"
-    header.Size = UDim2.new(1, 0, 0, 50)
+    header.Size = UDim2.new(1, 0, 0, 40)
     header.Position = UDim2.new(0, 0, 0, 0)
     header.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
     header.BorderSizePixel = 0
-    header.Parent = self.MainFrame
+    header.Parent = mainFrame
     
-    -- Título
     local title = Instance.new("TextLabel")
-    title.Name = "Title"
     title.Size = UDim2.new(0, 200, 1, 0)
-    title.Position = UDim2.new(0, 15, 0, 0)
-    title.Text = "⚡ REZO HUB"
+    title.Position = UDim2.new(0, 10, 0, 0)
+    title.Text = "⚡ REZO HUB v1.0"
     title.TextColor3 = Color3.fromRGB(0, 255, 255)
     title.BackgroundTransparency = 1
-    title.TextSize = 20
+    title.TextSize = 18
     title.Font = Enum.Font.GothamBold
     title.TextXAlignment = Enum.TextXAlignment.Left
     title.Parent = header
     
-    -- Botón de cerrar
-    local closeBtn = Instance.new("TextButton")
-    closeBtn.Name = "CloseButton"
-    closeBtn.Size = UDim2.new(0, 30, 0, 30)
-    closeBtn.Position = UDim2.new(1, -35, 0, 10)
-    closeBtn.Text = "X"
-    closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    closeBtn.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
-    closeBtn.BorderSizePixel = 0
-    closeBtn.Parent = header
+    -- Botón de toggle
+    local toggleBtn = Instance.new("TextButton")
+    toggleBtn.Size = UDim2.new(0, 30, 0, 30)
+    toggleBtn.Position = UDim2.new(1, -35, 0, 5)
+    toggleBtn.Text = "−"
+    toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    toggleBtn.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
+    toggleBtn.BorderSizePixel = 0
+    toggleBtn.Parent = header
     
-    closeBtn.MouseButton1Click:Connect(function()
-        self.ScreenGui.Enabled = not self.ScreenGui.Enabled
+    -- Contenido
+    local contentFrame = Instance.new("Frame")
+    contentFrame.Name = "Content"
+    contentFrame.Size = UDim2.new(1, -20, 1, -60)
+    contentFrame.Position = UDim2.new(0, 10, 0, 45)
+    contentFrame.BackgroundTransparency = 1
+    contentFrame.Parent = mainFrame
+    
+    -- Crear botones de funciones
+    self:CreateButtons(contentFrame)
+    
+    -- Sistema de arrastre
+    self:MakeDraggable(header, mainFrame)
+    
+    -- Evento de toggle
+    toggleBtn.MouseButton1Click:Connect(function()
+        contentFrame.Visible = not contentFrame.Visible
+        toggleBtn.Text = contentFrame.Visible and "−" or "+"
+        
+        if contentFrame.Visible then
+            mainFrame.Size = UDim2.new(0, 350, 0, 400)
+        else
+            mainFrame.Size = UDim2.new(0, 350, 0, 40)
+        end
     end)
 end
 
-function MenuManager:CreateNavigation()
-    local navFrame = Instance.new("Frame")
-    navFrame.Name = "Navigation"
-    navFrame.Size = UDim2.new(0, 100, 1, -100)
-    navFrame.Position = UDim2.new(0, 0, 0, 50)
-    navFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-    navFrame.BorderSizePixel = 0
-    navFrame.Parent = self.MainFrame
-    
+function RezoHub:CreateButtons(parent)
     local buttons = {
-        {"Fruits", "🍎", "Sistema de Frutas"},
-        {"Chests", "📦", "Sistema de Cofres"},
-        {"Skills", "⚡", "Sistema de Habilidades"},
-        {"Settings", "⚙️", "Configuración"}
+        {"🍎 Auto Frutas", "Activa farmeo automático de frutas", Color3.fromRGB(255, 100, 100)},
+        {"📦 Auto Cofres", "Recolecta cofres automáticamente", Color3.fromRGB(100, 150, 255)},
+        {"⚡ Auto Entrenar", "Entrena habilidades automáticamente", Color3.fromRGB(100, 255, 100)},
+        {"🔧 Configuración", "Ajustes del REZO HUB", Color3.fromRGB(255, 200, 100)}
     }
     
     for i, btnData in ipairs(buttons) do
-        self:CreateNavButton(navFrame, btnData[1], btnData[2], btnData[3], i)
-    end
-end
-
-function MenuManager:CreateNavButton(parent, name, icon, tooltip, index)
-    local button = Instance.new("TextButton")
-    button.Name = name .. "Button"
-    button.Size = UDim2.new(1, -10, 0, 40)
-    button.Position = UDim2.new(0, 5, 0, (index-1) * 45 + 10)
-    button.Text = icon .. " " .. name
-    button.TextColor3 = Color3.fromRGB(200, 200, 200)
-    button.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
-    button.BorderSizePixel = 0
-    button.TextSize = 12
-    button.Parent = parent
-    
-    button.MouseButton1Click:Connect(function()
-        self:SwitchTab(name)
-    end)
-end
-
-function MenuManager:CreateContentPanel()
-    local contentFrame = Instance.new("Frame")
-    contentFrame.Name = "ContentFrame"
-    contentFrame.Size = UDim2.new(1, -100, 1, -100)
-    contentFrame.Position = UDim2.new(0, 100, 0, 50)
-    contentFrame.BackgroundTransparency = 1
-    contentFrame.Parent = self.MainFrame
-    
-    -- Crear pestañas de contenido
-    self:CreateFruitsTab(contentFrame)
-    self:CreateChestsTab(contentFrame)
-    self:CreateSkillsTab(contentFrame)
-    self:CreateSettingsTab(contentFrame)
-    
-    -- Mostrar primera pestaña por defecto
-    self:SwitchTab("Fruits")
-end
-
-function MenuManager:CreateFruitsTab(parent)
-    local tab = Instance.new("Frame")
-    tab.Name = "FruitsTab"
-    tab.Size = UDim2.new(1, 0, 1, 0)
-    tab.BackgroundTransparency = 1
-    tab.Visible = false
-    tab.Parent = parent
-    
-    -- Toggle Auto Farm
-    local autoFarm = self:CreateToggle("Auto Farm Frutas", false, tab, 20)
-    local rangeSlider = self:CreateSlider("Rango", 10, 100, 50, tab, 70)
-    
-    -- Info de frutas
-    local infoLabel = Instance.new("TextLabel")
-    infoLabel.Size = UDim2.new(1, -20, 0, 80)
-    infoLabel.Position = UDim2.new(0, 10, 0, 120)
-    infoLabel.Text = "🍊 Sistema de Frutas\n\n• Auto-detectar frutas\n• Recolección automática\n• Rango configurable"
-    infoLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    infoLabel.BackgroundTransparency = 1
-    infoLabel.TextXAlignment = Enum.TextXAlignment.Left
-    infoLabel.Parent = tab
-end
-
-function MenuManager:CreateChestsTab(parent)
-    local tab = Instance.new("Frame")
-    tab.Name = "ChestsTab"
-    tab.Size = UDim2.new(1, 0, 1, 0)
-    tab.BackgroundTransparency = 1
-    tab.Visible = false
-    tab.Parent = parent
-    
-    local autoChests = self:CreateToggle("Auto Cofres", false, tab, 20)
-    local chestRange = self:CreateSlider("Rango Cofres", 10, 50, 30, tab, 70)
-end
-
-function MenuManager:CreateSkillsTab(parent)
-    local tab = Instance.new("Frame")
-    tab.Name = "SkillsTab"
-    tab.Size = UDim2.new(1, 0, 1, 0)
-    tab.BackgroundTransparency = 1
-    tab.Visible = false
-    tab.Parent = parent
-    
-    local autoSkills = self:CreateToggle("Auto Entrenar", false, tab, 20)
-    local skillRange = self:CreateSlider("Rango Enemigos", 10, 40, 25, tab, 70)
-end
-
-function MenuManager:CreateSettingsTab(parent)
-    local tab = Instance.new("Frame")
-    tab.Name = "SettingsTab"
-    tab.Size = UDim2.new(1, 0, 1, 0)
-    tab.BackgroundTransparency = 1
-    tab.Visible = false
-    tab.Parent = parent
-    
-    local debugToggle = self:CreateToggle("Modo Debug", true, tab, 20)
-end
-
-function MenuManager:CreateToggle(label, default, parent, yPosition)
-    local toggle = Instance.new("TextButton")
-    toggle.Size = UDim2.new(1, -20, 0, 30)
-    toggle.Position = UDim2.new(0, 10, 0, yPosition)
-    toggle.Text = label .. ": " .. (default and "ON" or "OFF")
-    toggle.TextColor3 = default and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
-    toggle.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
-    toggle.BorderSizePixel = 0
-    toggle.Parent = parent
-    
-    toggle.MouseButton1Click:Connect(function()
-        local newState = not (toggle.Text:find("ON") ~= nil)
-        toggle.Text = label .. ": " .. (newState and "ON" or "OFF")
-        toggle.TextColor3 = newState and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
+        local button = Instance.new("TextButton")
+        button.Size = UDim2.new(1, 0, 0, 50)
+        button.Position = UDim2.new(0, 0, 0, (i-1) * 60)
+        button.Text = btnData[1]
+        button.TextColor3 = Color3.fromRGB(255, 255, 255)
+        button.BackgroundColor3 = btnData[3]
+        button.BorderSizePixel = 0
+        button.TextSize = 16
+        button.Font = Enum.Font.GothamBold
+        button.Parent = parent
         
-        -- Actualizar configuración
-        if RezoHub then
-            local configKey = label:gsub(" ", "")
-            RezoHub.Config[configKey] = newState
+        -- Descripción
+        local desc = Instance.new("TextLabel")
+        desc.Size = UDim2.new(1, 0, 0, 20)
+        desc.Position = UDim2.new(0, 0, 0, 35)
+        desc.Text = btnData[2]
+        desc.TextColor3 = Color3.fromRGB(200, 200, 200)
+        desc.BackgroundTransparency = 1
+        desc.TextSize = 12
+        desc.Font = Enum.Font.Gotham
+        desc.Parent = button
+        
+        -- Eventos de los botones
+        if i == 1 then
+            button.MouseButton1Click:Connect(function()
+                self.Config.AutoFarmFruits = not self.Config.AutoFarmFruits
+                button.Text = self.Config.AutoFarmFruits and "🍎 Auto Frutas ✅" or "🍎 Auto Frutas"
+                print("🌱 Auto Frutas: " .. (self.Config.AutoFarmFruits and "ACTIVADO" or "DESACTIVADO"))
+            end)
+        elseif i == 2 then
+            button.MouseButton1Click:Connect(function()
+                self.Config.AutoCollectChests = not self.Config.AutoCollectChests
+                button.Text = self.Config.AutoCollectChests and "📦 Auto Cofres ✅" or "📦 Auto Cofres"
+                print("🗺️ Auto Cofres: " .. (self.Config.AutoCollectChests and "ACTIVADO" or "DESACTIVADO"))
+            end)
+        elseif i == 3 then
+            button.MouseButton1Click:Connect(function()
+                self.Config.AutoTrainSkills = not self.Config.AutoTrainSkills
+                button.Text = self.Config.AutoTrainSkills and "⚡ Auto Entrenar ✅" or "⚡ Auto Entrenar"
+                print("🎯 Auto Entrenar: " .. (self.Config.AutoTrainSkills and "ACTIVADO" or "DESACTIVADO"))
+            end)
+        elseif i == 4 then
+            button.MouseButton1Click:Connect(function()
+                self:ShowConfigMenu()
+            end)
         end
-    end)
-    
-    return toggle
-end
-
-function MenuManager:CreateSlider(label, min, max, default, parent, yPosition)
-    local sliderFrame = Instance.new("Frame")
-    sliderFrame.Size = UDim2.new(1, -20, 0, 40)
-    sliderFrame.Position = UDim2.new(0, 10, 0, yPosition)
-    sliderFrame.BackgroundTransparency = 1
-    sliderFrame.Parent = parent
-    
-    local labelText = Instance.new("TextLabel")
-    labelText.Size = UDim2.new(1, 0, 0, 20)
-    labelText.Position = UDim2.new(0, 0, 0, 0)
-    labelText.Text = label .. ": " .. default
-    labelText.TextColor3 = Color3.fromRGB(255, 255, 255)
-    labelText.BackgroundTransparency = 1
-    labelText.TextXAlignment = Enum.TextXAlignment.Left
-    labelText.Parent = sliderFrame
-    
-    return labelText
-end
-
-function MenuManager:SwitchTab(tabName)
-    -- Ocultar todas las pestañas
-    for _, child in ipairs(self.MainFrame.ContentFrame:GetChildren()) do
-        if child:IsA("Frame") then
-            child.Visible = false
-        end
-    end
-    
-    -- Mostrar pestaña seleccionada
-    local targetTab = self.MainFrame.ContentFrame:FindFirstChild(tabName .. "Tab")
-    if targetTab then
-        targetTab.Visible = true
     end
 end
 
-function MenuManager:SetupDragFunctionality()
+-- SISTEMA DE ARRASTRE
+function RezoHub:MakeDraggable(dragHandle, mainFrame)
     local dragging = false
     local dragInput, dragStart, startPos
     
-    self.MainFrame.Header.InputBegan:Connect(function(input)
+    dragHandle.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             dragging = true
             dragStart = input.Position
-            startPos = self.MainFrame.Position
+            startPos = mainFrame.Position
             
             input.Changed:Connect(function()
                 if input.UserInputState == Enum.UserInputState.End then
@@ -278,7 +198,7 @@ function MenuManager:SetupDragFunctionality()
         end
     end)
     
-    self.MainFrame.Header.InputChanged:Connect(function(input)
+    dragHandle.InputChanged:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseMovement then
             dragInput = input
         end
@@ -287,7 +207,7 @@ function MenuManager:SetupDragFunctionality()
     UserInputService.InputChanged:Connect(function(input)
         if input == dragInput and dragging then
             local delta = input.Position - dragStart
-            self.MainFrame.Position = UDim2.new(
+            mainFrame.Position = UDim2.new(
                 startPos.X.Scale, 
                 startPos.X.Offset + delta.X,
                 startPos.Y.Scale, 
@@ -297,27 +217,154 @@ function MenuManager:SetupDragFunctionality()
     end)
 end
 
-function MenuManager:CreateFooter()
-    local footer = Instance.new("Frame")
-    footer.Name = "Footer"
-    footer.Size = UDim2.new(1, 0, 0, 30)
-    footer.Position = UDim2.new(0, 0, 1, -30)
-    footer.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
-    footer.BorderSizePixel = 0
-    footer.Parent = self.MainFrame
+-- SISTEMAS DE FARMEO
+function RezoHub:StartSystems()
+    -- Sistema de actualización continua
+    RunService.Heartbeat:Connect(function()
+        self:UpdateSystems()
+    end)
+end
+
+function RezoHub:UpdateSystems()
+    if self.Config.AutoFarmFruits then
+        self:AutoFarmFruits()
+    end
     
-    local version = Instance.new("TextLabel")
-    version.Size = UDim2.new(1, -10, 1, 0)
-    version.Position = UDim2.new(0, 10, 0, 0)
-    version.Text = "REZO HUB v1.0 | Blox Fruits"
-    version.TextColor3 = Color3.fromRGB(150, 150, 150)
-    version.BackgroundTransparency = 1
-    version.TextXAlignment = Enum.TextXAlignment.Left
-    version.Parent = footer
+    if self.Config.AutoCollectChests then
+        self:AutoCollectChests()
+    end
+    
+    if self.Config.AutoTrainSkills then
+        self:AutoTrainSkills()
+    end
 end
 
-return MenuManager
-    -- Aquí irían los manejadores de eventos para los controles
+function RezoHub:AutoFarmFruits()
+    local character = player.Character
+    if not character then return end
+    
+    local humanoid = character:FindFirstChild("Humanoid")
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    if not humanoid or not rootPart then return end
+    
+    -- Buscar frutas comunes
+    local fruitNames = {"Ice", "Dark", "Light", "Magma", "Quake", "Bomb", "Spike", "Flame"}
+    
+    for _, fruitName in ipairs(fruitNames) do
+        local fruit = workspace:FindFirstChild(fruitName)
+        if fruit and fruit:IsA("Part") then
+            local distance = (fruit.Position - rootPart.Position).Magnitude
+            if distance < self.Config.FruitRange then
+                humanoid:MoveTo(fruit.Position)
+                
+                if distance < 10 and fruit:FindFirstChild("ClickDetector") then
+                    fireclickdetector(fruit.ClickDetector)
+                    if self.Config.DebugMode then
+                        print("🍊 Fruta recolectada: " .. fruitName)
+                    end
+                end
+                break
+            end
+        end
+    end
 end
 
-return MenuManager
+function RezoHub:AutoCollectChests()
+    local character = player.Character
+    if not character then return end
+    
+    local humanoid = character:FindFirstChild("Humanoid")
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    if not humanoid or not rootPart then return end
+    
+    -- Buscar cofres
+    local chestLocations = {"Chests", "Chest", "TreasureChest"}
+    
+    for _, locationName in ipairs(chestLocations) do
+        local location = workspace:FindFirstChild(locationName)
+        if location then
+            for _, chest in ipairs(location:GetChildren()) do
+                if chest:IsA("Model") or chest:IsA("Part") then
+                    local chestPos = chest:IsA("Model") and chest:GetPivot().Position or chest.Position
+                    local distance = (chestPos - rootPart.Position).Magnitude
+                    
+                    if distance < self.Config.ChestRange then
+                        humanoid:MoveTo(chestPos)
+                        
+                        if distance < 8 and chest:FindFirstChild("ClickDetector") then
+                            fireclickdetector(chest.ClickDetector)
+                            if self.Config.DebugMode then
+                                print("📦 Cofre abierto")
+                            end
+                        end
+                        break
+                    end
+                end
+            end
+        end
+    end
+end
+
+function RezoHub:AutoTrainSkills()
+    local character = player.Character
+    if not character then return end
+    
+    local humanoid = character:FindFirstChild("Humanoid")
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    if not humanoid or not rootPart then return end
+    
+    -- Buscar enemigos
+    local enemyContainers = {"Enemies", "NPCs", "Monsters"}
+    
+    for _, containerName in ipairs(enemyContainers) do
+        local container = workspace:FindFirstChild(containerName)
+        if container then
+            for _, enemy in ipairs(container:GetChildren()) do
+                if enemy:FindFirstChild("Humanoid") and enemy:FindFirstChild("HumanoidRootPart") then
+                    local distance = (enemy.HumanoidRootPart.Position - rootPart.Position).Magnitude
+                    
+                    if distance < self.Config.EnemyRange then
+                        humanoid:MoveTo(enemy.HumanoidRootPart.Position)
+                        
+                        if self.Config.DebugMode then
+                            print("⚡ Atacando enemigo: " .. enemy.Name)
+                        end
+                        break
+                    end
+                end
+            end
+        end
+    end
+end
+
+function RezoHub:ShowConfigMenu()
+    print("⚙️ CONFIGURACIÓN REZO HUB")
+    print("🌱 Auto Frutas: " .. tostring(self.Config.AutoFarmFruits))
+    print("📦 Auto Cofres: " .. tostring(self.Config.AutoCollectChests))
+    print("⚡ Auto Entrenar: " .. tostring(self.Config.AutoTrainSkills))
+    print("🐛 Debug Mode: " .. tostring(self.Config.DebugMode))
+end
+
+function RezoHub:ShowWelcomeMessage()
+    local message = [[
+    
+    ╔══════════════════════════════╗
+    ║         ⚡ REZO HUB          ║
+    ║    Blox Fruits Assistant    ║
+    ║                             ║
+    ║  ✅ Cargado en Delta       ║
+    ║  📱 Listo para usar        ║
+    ║  🎮 Disfruta del juego!    ║
+    ╚══════════════════════════════╝
+    
+    ]]
+    print(message)
+end
+
+-- INICIAR EL SCRIPT
+RezoHub:Initialize()
+
+-- Mantener referencia global
+_G.RezoHub = RezoHub
+
+print("🚀 REZO HUB ejecutado exitosamente en Delta!")
