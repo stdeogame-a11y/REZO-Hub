@@ -1,1 +1,31 @@
+-- FruitScript.lua
 
+-- Configuración
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+
+-- Función para obtener frutas
+local function getFruit()
+    local fruits = {
+        "Banana",  -- Reemplaza con el nombre de la fruta que deseas obtener
+        "Apple",   -- Añade más frutas según sea necesario
+        "Orange"
+    }
+
+    for _, fruitName in ipairs(fruits) do
+        local fruit = game.Workspace:FindFirstChild(fruitName)
+        if fruit then
+            local distance = (fruit.Position - character.PrimaryPart.Position).Magnitude
+            if distance < 50 then  -- Ajusta el rango según sea necesario
+                humanoid:MoveTo(fruit.Position)
+                wait(2)  -- Espera a que el personaje se mueva
+                fireclickdetector(fruit.ClickDetector)
+                wait(1)  -- Espera a que la fruta se recolecte
+            end
+        end
+    end
+end
+
+-- Ejecutar función
+getFruit()
