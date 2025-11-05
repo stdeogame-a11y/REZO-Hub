@@ -1,0 +1,97 @@
+-- SkillSystem.lua - Sistema de Habilidades
+local SkillSystem = {}
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+local character = nil
+local isTraining = false
+local currentConfig = {}
+
+function SkillSystem:Initialize(config)
+    currentConfig = config
+    character = player.Character or player.CharacterAdded:Wait()
+    
+    player.CharacterAdded:Connect(function(newChar)
+        character = newChar
+    end)
+    
+    print("✅ Sistema de Habilidades inicializado")
+end
+
+function SkillSystem:StartTraining()
+    if isTraining then return end
+    
+    isTraining = true
+    self:TrainingLoop()
+end
+
+function SkillSystem:StopTraining()
+    isTraining = false
+end
+
+function SkillSystem:TrainingLoop()
+    coroutine.wrap(function()
+        while isTraining and character and character:FindFirstChild("HumanoidRootPart") do
+            self:FindAndAttackEnemies()
+            wait(2) -- Espera entre búsquedas
+        end
+    end)()
+end
+
+function SkillSystem:FindAndAttackEnemies()
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    if not rootPart then return end
+    
+    local enemiesFound = 0
+    
+    -- Buscar enemigos en el workspace
+    local enemyContainers = {
+        workspace:FindFirstChild("Enemies"),
+        workspace:FindFirstChild("NPCs"),
+        workspace:FindFirstChild("Monsters")
+    }
+    
+    for _, container in ipairs(enemyContainers) do
+        if container then
+            for _, enemy in ipairs(container:GetChildren()) do
+                if enemy:FindFirstChild("Humanoid") and enemy:FindFirstChild("HumanoidRootPart") then
+                    local distance = (enemy.HumanoidRootPart.Position - rootPart.Position).Magnitude
+                    
+                    if distance <= currentConfig.EnemyRange then
+                        self:AttackEnemy(enemy)
+                        enemiesFound += 1
+                    end
+                end
+            end
+        end
+    end
+    
+    if currentConfig.DebugMode and enemiesFound > 0 then
+        print("⚡ Atacando " .. enemiesFound .. " enemigos")
+    end
+end
+
+function SkillSystem:AttackEnemy(enemy)
+    if not character or not character:FindFirstChild("Humanoid") then return end
+    
+    local humanoid = character.Humanoid
+    local rootPart = character.HumanoidRootPart
+    
+    -- Mover hacia el enemigo
+    humanoid:MoveTo(enemy.HumanoidRootPart.Position)
+    
+    -- Simular ataque (esto sería específico del juego)
+    if currentConfig.DebugMode then
+        print("🎯 Atacando enemigo: " .. enemy.Name)
+    end
+end
+
+function SkillSystem:GetSkillInfo()
+    return {
+        IsTraining = isTraining,
+        CurrentRange = currentConfig.EnemyRange
+    }
+end
+
+return SkillSystem
