@@ -1,0 +1,217 @@
+-- MenuManager.lua - Sistema de Interfaz de Usuario
+local MenuManager = {}
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+
+local player = Players.LocalPlayer
+local screenGui = nil
+
+function MenuManager:Initialize(config)
+    self.Config = config
+    self:CreateMainMenu()
+    self:SetupEventHandlers()
+end
+
+function MenuManager:CreateMainMenu()
+    -- Crear GUI principal
+    screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "BloxFruitsHelperUI"
+    screenGui.Parent = player:WaitForChild("PlayerGui")
+    
+    -- Marco principal
+    local mainFrame = Instance.new("Frame")
+    mainFrame.Name = "MainFrame"
+    mainFrame.Size = UDim2.new(0, 350, 0, 400)
+    mainFrame.Position = UDim2.new(0, 10, 0, 10)
+    mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+    mainFrame.BorderSizePixel = 0
+    mainFrame.Parent = screenGui
+    
+    -- Título
+    local title = Instance.new("TextLabel")
+    title.Name = "Title"
+    title.Size = UDim2.new(1, 0, 0, 40)
+    title.Position = UDim2.new(0, 0, 0, 0)
+    title.Text = "🍊 Blox Fruits Helper"
+    title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    title.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+    title.TextSize = 18
+    title.Font = Enum.Font.GothamBold
+    title.Parent = mainFrame
+    
+    -- Panel de pestañas
+    local tabButtonsFrame = Instance.new("Frame")
+    tabButtonsFrame.Name = "TabButtons"
+    tabButtonsFrame.Size = UDim2.new(1, 0, 0, 30)
+    tabButtonsFrame.Position = UDim2.new(0, 0, 0, 40)
+    tabButtonsFrame.BackgroundTransparency = 1
+    tabButtonsFrame.Parent = mainFrame
+    
+    -- Contenido de pestañas
+    local tabContentFrame = Instance.new("Frame")
+    tabContentFrame.Name = "TabContent"
+    tabContentFrame.Size = UDim2.new(1, 0, 1, -70)
+    tabContentFrame.Position = UDim2.new(0, 0, 0, 70)
+    tabContentFrame.BackgroundTransparency = 1
+    tabContentFrame.Parent = mainFrame
+    
+    self:CreateTabs(tabButtonsFrame, tabContentFrame)
+end
+
+function MenuManager:CreateTabs(buttonsFrame, contentFrame)
+    local tabs = {
+        {"Frutas", "🍎"},
+        {"Cofres", "📦"}, 
+        {"Habilidades", "⚡"},
+        {"Configuración", "⚙️"}
+    }
+    
+    for i, tabData in ipairs(tabs) do
+        local tabName, icon = tabData[1], tabData[2]
+        
+        -- Botón de pestaña
+        local tabButton = Instance.new("TextButton")
+        tabButton.Name = tabName .. "Tab"
+        tabButton.Size = UDim2.new(1/#tabs, 0, 1, 0)
+        tabButton.Position = UDim2.new((i-1)/#tabs, 0, 0, 0)
+        tabButton.Text = icon .. " " .. tabName
+        tabButton.TextColor3 = Color3.fromRGB(200, 200, 200)
+        tabButton.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+        tabButton.BorderSizePixel = 0
+        tabButton.Parent = buttonsFrame
+        
+        -- Contenido de pestaña
+        local tabContent = Instance.new("Frame")
+        tabContent.Name = tabName .. "Content"
+        tabContent.Size = UDim2.new(1, 0, 1, 0)
+        tabContent.Position = UDim2.new(0, 0, 0, 0)
+        tabContent.BackgroundTransparency = 1
+        tabContent.Visible = i == 1
+        tabContent.Parent = contentFrame
+        
+        -- Configurar contenido específico de cada pestaña
+        self["Create" .. tabName .. "Tab"](self, tabContent)
+        
+        -- Evento de clic
+        tabButton.MouseButton1Click:Connect(function()
+            self:SwitchTab(tabName, contentFrame)
+        end)
+    end
+end
+
+function MenuManager:CreateFrutasTab(contentFrame)
+    local scrollFrame = Instance.new("ScrollingFrame")
+    scrollFrame.Size = UDim2.new(1, 0, 1, 0)
+    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 200)
+    scrollFrame.BackgroundTransparency = 1
+    scrollFrame.Parent = contentFrame
+    
+    -- Configuración de frutas
+    local autoFarmToggle = self:CreateToggle("Auto Farm Frutas", false, scrollFrame, 10)
+    local fruitRangeSlider = self:CreateSlider("Rango de Detección", 10, 100, 50, scrollFrame, 50)
+    
+    -- Información de frutas
+    local fruitInfo = Instance.new("TextLabel")
+    fruitInfo.Size = UDim2.new(1, -20, 0, 60)
+    fruitInfo.Position = UDim2.new(0, 10, 0, 100)
+    fruitInfo.Text = "🍊 Sistema de Frutas Activado\n📊 Rango: 50 studs"
+    fruitInfo.TextColor3 = Color3.fromRGB(255, 255, 255)
+    fruitInfo.BackgroundTransparency = 1
+    fruitInfo.TextXAlignment = Enum.TextXAlignment.Left
+    fruitInfo.Parent = scrollFrame
+end
+
+function MenuManager:CreateCofresTab(contentFrame)
+    local scrollFrame = Instance.new("ScrollingFrame")
+    scrollFrame.Size = UDim2.new(1, 0, 1, 0)
+    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 150)
+    scrollFrame.BackgroundTransparency = 1
+    scrollFrame.Parent = contentFrame
+    
+    local autoChestToggle = self:CreateToggle("Auto Recolectar Cofres", false, scrollFrame, 10)
+    local chestRangeSlider = self:CreateSlider("Rango de Cofres", 10, 50, 30, scrollFrame, 50)
+end
+
+function MenuManager:CreateHabilidadesTab(contentFrame)
+    local scrollFrame = Instance.new("ScrollingFrame")
+    scrollFrame.Size = UDim2.new(1, 0, 1, 0)
+    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 120)
+    scrollFrame.BackgroundTransparency = 1
+    scrollFrame.Parent = contentFrame
+    
+    local autoSkillsToggle = self:CreateToggle("Auto Mejorar Habilidades", false, scrollFrame, 10)
+    local enemyRangeSlider = self:CreateSlider("Rango de Enemigos", 10, 30, 20, scrollFrame, 50)
+end
+
+function MenuManager:CreateConfiguraciónTab(contentFrame)
+    local scrollFrame = Instance.new("ScrollingFrame")
+    scrollFrame.Size = UDim2.new(1, 0, 1, 0)
+    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 80)
+    scrollFrame.BackgroundTransparency = 1
+    scrollFrame.Parent = contentFrame
+    
+    local debugToggle = self:CreateToggle("Modo Debug", true, scrollFrame, 10)
+end
+
+function MenuManager:CreateToggle(label, default, parent, yPosition)
+    local toggleFrame = Instance.new("Frame")
+    toggleFrame.Size = UDim2.new(1, -20, 0, 30)
+    toggleFrame.Position = UDim2.new(0, 10, 0, yPosition)
+    toggleFrame.BackgroundTransparency = 1
+    toggleFrame.Parent = parent
+    
+    local toggleButton = Instance.new("TextButton")
+    toggleButton.Size = UDim2.new(0, 50, 0, 25)
+    toggleButton.Position = UDim2.new(1, -50, 0, 0)
+    toggleButton.Text = default and "ON" : "OFF"
+    toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    toggleButton.BackgroundColor3 = default and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(170, 0, 0)
+    toggleButton.Parent = toggleFrame
+    
+    local labelText = Instance.new("TextLabel")
+    labelText.Size = UDim2.new(1, -60, 1, 0)
+    labelText.Position = UDim2.new(0, 0, 0, 0)
+    labelText.Text = label
+    labelText.TextColor3 = Color3.fromRGB(255, 255, 255)
+    labelText.BackgroundTransparency = 1
+    labelText.TextXAlignment = Enum.TextXAlignment.Left
+    labelText.Parent = toggleFrame
+    
+    return toggleButton
+end
+
+function MenuManager:CreateSlider(label, min, max, default, parent, yPosition)
+    local sliderFrame = Instance.new("Frame")
+    sliderFrame.Size = UDim2.new(1, -20, 0, 40)
+    sliderFrame.Position = UDim2.new(0, 10, 0, yPosition)
+    sliderFrame.BackgroundTransparency = 1
+    sliderFrame.Parent = parent
+    
+    local labelText = Instance.new("TextLabel")
+    labelText.Size = UDim2.new(1, 0, 0, 20)
+    labelText.Position = UDim2.new(0, 0, 0, 0)
+    labelText.Text = label .. ": " .. default
+    labelText.TextColor3 = Color3.fromRGB(255, 255, 255)
+    labelText.BackgroundTransparency = 1
+    labelText.TextXAlignment = Enum.TextXAlignment.Left
+    labelText.Parent = sliderFrame
+    
+    return labelText
+end
+
+function MenuManager:SwitchTab(tabName, contentFrame)
+    for _, child in ipairs(contentFrame:GetChildren()) do
+        child.Visible = false
+    end
+    
+    local targetTab = contentFrame:FindFirstChild(tabName .. "Content")
+    if targetTab then
+        targetTab.Visible = true
+    end
+end
+
+function MenuManager:SetupEventHandlers()
+    -- Aquí irían los manejadores de eventos para los controles
+end
+
+return MenuManager
