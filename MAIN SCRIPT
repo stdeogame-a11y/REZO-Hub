@@ -1,48 +1,134 @@
--- MAIN SCRIPT - Blox Fruits Helper
+-- REZO HUB - Blox Fruits
+-- Main Script v1.0
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+
 local player = Players.LocalPlayer
+local RezoHub = {}
 
--- Crear carpeta principal para el sistema
-local BloxFruitsSystem = Instance.new("Folder")
-BloxFruitsSystem.Name = "BloxFruitsHelperSystem"
-BloxFruitsSystem.Parent = ReplicatedStorage
-
--- Módulos
-local MenuManager = require(script.Parent.MenuManager)
-local FruitSystem = require(script.Parent.FruitSystem)
-local ChestSystem = require(script.Parent.ChestSystem)
-local SkillSystem = require(script.Parent.SkillSystem)
-
--- Sistema de configuración
-local Config = {
-    AutoFarm = false,
+-- Configuración global
+RezoHub.Config = {
+    AutoFarmFruits = false,
+    AutoCollectChests = false,
+    AutoTrainSkills = false,
     FruitRange = 50,
     ChestRange = 30,
-    EnemyRange = 20,
-    DebugMode = true
+    EnemyRange = 25,
+    DebugMode = true,
+    Version = "1.0"
 }
 
--- Inicialización principal
-local function initialize()
-    -- Esperar a que el jugador esté listo
-    if not player.Character then
-        player.CharacterAdded:Wait()
+-- Sistema de módulos
+RezoHub.Modules = {
+    MenuManager = nil,
+    FruitSystem = nil,
+    ChestSystem = nil,
+    SkillSystem = nil
+}
+
+-- Función para cargar módulos
+function RezoHub:LoadModule(moduleName)
+    if self.Modules[moduleName] then
+        return self.Modules[moduleName]
     end
     
-    -- Inicializar módulos
-    MenuManager:Initialize(Config)
-    FruitSystem:Initialize(Config)
-    ChestSystem:Initialize(Config)
-    SkillSystem:Initialize(Config)
-    
-    print("✅ Sistema Blox Fruits Helper inicializado correctamente")
-    print("📁 Estructura modular cargada:")
-    print("   - MenuManager: Sistema de interfaz")
-    print("   - FruitSystem: Gestión de frutas")
-    print("   - ChestSystem: Gestión de cofres")
-    print("   - SkillSystem: Sistema de habilidades")
+    -- En un entorno real, esto cargaría desde archivos externos
+    local module = require(script:WaitForChild(moduleName))
+    self.Modules[moduleName] = module
+    return module
 end
 
--- Ejecutar inicialización
-initialize()
+-- Inicialización principal
+function RezoHub:Initialize()
+    -- Esperar a que el jugador esté listo
+    repeat wait() until player.Character
+    player.CharacterAdded:Connect(function(char)
+        self.Character = char
+    end)
+    self.Character = player.Character
+    
+    print("🎮 REZO HUB Inicializando...")
+    print("📋 Versión: " .. self.Config.Version)
+    
+    -- Cargar módulos
+    self:LoadModule("MenuManager")
+    self:LoadModule("FruitSystem") 
+    self:LoadModule("ChestSystem")
+    self:LoadModule("SkillSystem")
+    
+    -- Inicializar módulos
+    for name, module in pairs(self.Modules) do
+        if module.Initialize then
+            module:Initialize(self.Config)
+            print("✅ " .. name .. " cargado correctamente")
+        end
+    end
+    
+    self:SetupConnections()
+    self:ShowWelcomeMessage()
+end
+
+-- Configurar conexiones de eventos
+function RezoHub:SetupConnections()
+    RunService.Heartbeat:Connect(function()
+        self:GlobalUpdate()
+    end)
+end
+
+-- Actualización global
+function RezoHub:GlobalUpdate()
+    if self.Config.AutoFarmFruits and self.Modules.FruitSystem then
+        self.Modules.FruitSystem:Update()
+    end
+    
+    if self.Config.AutoCollectChests and self.Modules.ChestSystem then
+        self.Modules.ChestSystem:Update()
+    end
+    
+    if self.Config.AutoTrainSkills and self.Modules.SkillSystem then
+        self.Modules.SkillSystem:Update()
+    end
+end
+
+-- Mensaje de bienvenida
+function RezoHub:ShowWelcomeMessage()
+    local message = [[
+    
+    ╔══════════════════════════════╗
+    ║         🎮 REZO HUB         ║
+    ║    Blox Fruits Assistant    ║
+    ║                             ║
+    ║  ✅ Sistema Cargado        ║
+    ║  📊 Versión: ]] .. self.Config.Version .. [[         ║
+    ║  🎯 Módulos Activados      ║
+    ╚══════════════════════════════╝
+    ]]
+    
+    print(message)
+end
+
+-- Función para cambiar configuración
+function RezoHub:UpdateConfig(newConfig)
+    for key, value in pairs(newConfig) do
+        if self.Config[key] ~= nil then
+            self.Config[key] = value
+        end
+    end
+end
+
+-- Obtener estado del sistema
+function RezoHub:GetStatus()
+    return {
+        Config = self.Config,
+        ModulesLoaded = #self.Modules,
+        Player = player.Name,
+        Character = self.Character ~= nil
+    }
+end
+
+-- Inicializar automáticamente
+RezoHub:Initialize()
+
+return RezoHub
