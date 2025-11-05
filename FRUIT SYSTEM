@@ -1,0 +1,123 @@
+-- FruitSystem.lua - Sistema Específico para Frutas
+local FruitSystem = {}
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+local character = nil
+local isFarming = false
+local currentConfig = {}
+
+-- Configuración de frutas
+local fruitTypes = {
+    "Ice",
+    "Dark",
+    "Light", 
+    "Magma",
+    "Quake",
+    "Bomb",
+    "Spike",
+    "Flame",
+    "Bird: Falcon",
+    "Sand",
+    "Ghost",
+    "Diamond",
+    "Rubber",
+    "Barrier",
+    "Door"
+}
+
+function FruitSystem:Initialize(config)
+    currentConfig = config
+    character = player.Character or player.CharacterAdded:Wait()
+    
+    player.CharacterAdded:Connect(function(newChar)
+        character = newChar
+    end)
+    
+    print("✅ Sistema de Frutas inicializado")
+end
+
+function FruitSystem:StartFarming()
+    if isFarming then return end
+    
+    isFarming = true
+    self:FarmingLoop()
+end
+
+function FruitSystem:StopFarming()
+    isFarming = false
+end
+
+function FruitSystem:FarmingLoop()
+    coroutine.wrap(function()
+        while isFarming and character and character:FindFirstChild("HumanoidRootPart") do
+            self:FindAndCollectFruits()
+            wait(2) -- Espera entre búsquedas
+        end
+    end)()
+end
+
+function FruitSystem:FindAndCollectFruits()
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    if not rootPart then return end
+    
+    local fruitsFound = 0
+    
+    -- Buscar frutas en el workspace
+    for _, fruitName in ipairs(fruitTypes) do
+        local fruit = workspace:FindFirstChild(fruitName)
+        if fruit and fruit:IsA("Part") then
+            local distance = (fruit.Position - rootPart.Position).Magnitude
+            if distance <= currentConfig.FruitRange then
+                self:CollectFruit(fruit)
+                fruitsFound += 1
+            end
+        end
+    end
+    
+    if currentConfig.DebugMode and fruitsFound > 0 then
+        print("🍊 Encontradas " .. fruitsFound .. " frutas en el rango")
+    end
+end
+
+function FruitSystem:CollectFruit(fruit)
+    if not character or not character:FindFirstChild("Humanoid") then return end
+    
+    local humanoid = character.Humanoid
+    local rootPart = character.HumanoidRootPart
+    
+    -- Mover al personaje hacia la fruta
+    humanoid:MoveTo(fruit.Position)
+    
+    -- Esperar a llegar cerca
+    local connection
+    connection = RunService.Heartbeat:Connect(function()
+        if not rootPart then 
+            connection:Disconnect()
+            return 
+        end
+        
+        local distance = (fruit.Position - rootPart.Position).Magnitude
+        if distance < 10 then
+            connection:Disconnect()
+            -- Intentar recolectar la fruta
+            if fruit:FindFirstChild("ClickDetector") then
+                fireclickdetector(fruit.ClickDetector)
+                if currentConfig.DebugMode then
+                    print("✅ Fruta recolectada: " .. fruit.Name)
+                end
+            end
+        end
+    end)
+end
+
+function FruitSystem:GetFruitInfo()
+    return {
+        TotalTypes = #fruitTypes,
+        IsFarming = isFarming,
+        CurrentRange = currentConfig.FruitRange
+    }
+end
+
+return FruitSystem
