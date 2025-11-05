@@ -63,8 +63,10 @@ local function improveSkills()
     end
 end
 
--- Configuración del menú
+-- Configuración del menú (Integra el contenido del enlace aquí)
 local function createMenu()
+    -- Copia y pega el contenido del enlace aquí
+    -- Ejemplo de cómo podría verse:
     local screenGui = Instance.new("ScreenGui")
     screenGui.Parent = player:WaitForChild("PlayerGui")
 
