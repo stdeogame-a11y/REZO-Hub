@@ -1,0 +1,114 @@
+-- ChestSystem.lua - Sistema Específico para Cofres
+local ChestSystem = {}
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+local character = nil
+local isCollecting = false
+local currentConfig = {}
+
+function ChestSystem:Initialize(config)
+    currentConfig = config
+    character = player.Character or player.CharacterAdded:Wait()
+    
+    player.CharacterAdded:Connect(function(newChar)
+        character = newChar
+    end)
+    
+    print("✅ Sistema de Cofres inicializado")
+end
+
+function ChestSystem:StartCollecting()
+    if isCollecting then return end
+    
+    isCollecting = true
+    self:CollectionLoop()
+end
+
+function ChestSystem:StopCollecting()
+    isCollecting = false
+end
+
+function ChestSystem:CollectionLoop()
+    coroutine.wrap(function()
+        while isCollecting and character and character:FindFirstChild("HumanoidRootPart") do
+            self:FindAndCollectChests()
+            wait(3) -- Espera entre búsquedas
+        end
+    end)()
+end
+
+function ChestSystem:FindAndCollectChests()
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    if not rootPart then return end
+    
+    local chestsFound = 0
+    
+    -- Buscar cofres en ubicaciones comunes
+    local chestLocations = {
+        workspace:FindFirstChild("Chests"),
+        workspace:FindFirstChild("Chest"),
+        workspace:FindFirstChild("TreasureChest")
+    }
+    
+    for _, location in ipairs(chestLocations) do
+        if location then
+            for _, chest in ipairs(location:GetChildren()) do
+                if chest:IsA("Part") or chest:IsA("Model") then
+                    local chestPosition = chest:IsA("Model") and chest:GetExtentsSize() or chest.Position
+                    local distance = (chestPosition - rootPart.Position).Magnitude
+                    
+                    if distance <= currentConfig.ChestRange then
+                        self:CollectChest(chest)
+                        chestsFound += 1
+                    end
+                end
+            end
+        end
+    end
+    
+    if currentConfig.DebugMode and chestsFound > 0 then
+        print("📦 Encontrados " .. chestsFound .. " cofres en el rango")
+    end
+end
+
+function ChestSystem:CollectChest(chest)
+    if not character or not character:FindFirstChild("Humanoid") then return end
+    
+    local humanoid = character.Humanoid
+    local rootPart = character.HumanoidRootPart
+    
+    -- Mover al personaje hacia el cofre
+    humanoid:MoveTo(chest.Position)
+    
+    -- Esperar a llegar cerca
+    local connection
+    connection = RunService.Heartbeat:Connect(function()
+        if not rootPart then 
+            connection:Disconnect()
+            return 
+        end
+        
+        local distance = (chest.Position - rootPart.Position).Magnitude
+        if distance < 8 then
+            connection:Disconnect()
+            -- Intentar abrir el cofre
+            if chest:FindFirstChild("ClickDetector") then
+                fireclickdetector(chest.ClickDetector)
+                if currentConfig.DebugMode then
+                    print("✅ Cofre abierto: " .. chest.Name)
+                end
+            end
+        end
+    end)
+end
+
+function ChestSystem:GetChestInfo()
+    return {
+        IsCollecting = isCollecting,
+        CurrentRange = currentConfig.ChestRange
+    }
+end
+
+return ChestSystem
