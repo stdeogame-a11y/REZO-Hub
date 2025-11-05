@@ -1,51 +1,32 @@
--- SkillSystem.lua - Sistema de Habilidades
+ -- REZO HUB - Skill System
 local SkillSystem = {}
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
-local character = nil
-local isTraining = false
-local currentConfig = {}
+local RezoHub = nil
 
 function SkillSystem:Initialize(config)
-    currentConfig = config
-    character = player.Character or player.CharacterAdded:Wait()
+    self.Config = config
+    RezoHub = _G.RezoHub or require(script.Parent.MainScript)
+    self.Active = false
+    self.CurrentEnemies = {}
     
-    player.CharacterAdded:Connect(function(newChar)
-        character = newChar
-    end)
-    
-    print("✅ Sistema de Habilidades inicializado")
+    print("✅ Skill System inicializado")
 end
 
-function SkillSystem:StartTraining()
-    if isTraining then return end
+function SkillSystem:Update()
+    if not self.Config.AutoTrainSkills or not self.Active then
+        return
+    end
     
-    isTraining = true
-    self:TrainingLoop()
+    self:ScanForEnemies()
+    self:AttackNearestEnemy()
 end
 
-function SkillSystem:StopTraining()
-    isTraining = false
-end
-
-function SkillSystem:TrainingLoop()
-    coroutine.wrap(function()
-        while isTraining and character and character:FindFirstChild("HumanoidRootPart") do
-            self:FindAndAttackEnemies()
-            wait(2) -- Espera entre búsquedas
-        end
-    end)()
-end
-
-function SkillSystem:FindAndAttackEnemies()
-    local rootPart = character:FindFirstChild("HumanoidRootPart")
-    if not rootPart then return end
+function SkillSystem:ScanForEnemies()
+    self.CurrentEnemies = {}
     
-    local enemiesFound = 0
-    
-    -- Buscar enemigos en el workspace
     local enemyContainers = {
         workspace:FindFirstChild("Enemies"),
         workspace:FindFirstChild("NPCs"),
@@ -56,42 +37,53 @@ function SkillSystem:FindAndAttackEnemies()
         if container then
             for _, enemy in ipairs(container:GetChildren()) do
                 if enemy:FindFirstChild("Humanoid") and enemy:FindFirstChild("HumanoidRootPart") then
-                    local distance = (enemy.HumanoidRootPart.Position - rootPart.Position).Magnitude
-                    
-                    if distance <= currentConfig.EnemyRange then
-                        self:AttackEnemy(enemy)
-                        enemiesFound += 1
-                    end
+                    table.insert(self.CurrentEnemies, enemy)
                 end
             end
         end
     end
+end
+
+function SkillSystem:AttackNearestEnemy()
+    local character = player.Character
+    if not character then return end
     
-    if currentConfig.DebugMode and enemiesFound > 0 then
-        print("⚡ Atacando " .. enemiesFound .. " enemigos")
+    local humanoid = character:FindFirstChild("Humanoid")
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    if not humanoid or not rootPart then return end
+    
+    local nearestEnemy = nil
+    local shortestDistance = self.Config.EnemyRange
+    
+    for _, enemy in ipairs(self.CurrentEnemies) do
+        local distance = (enemy.HumanoidRootPart.Position - rootPart.Position).Magnitude
+        if distance < shortestDistance then
+            shortestDistance = distance
+            nearestEnemy = enemy
+        end
+    end
+    
+    if nearestEnemy then
+        humanoid:MoveTo(nearestEnemy.HumanoidRootPart.Position)
+        
+        if self.Config.DebugMode then
+            print("⚡ Atacando enemigo: " .. nearestEnemy.Name)
+        end
     end
 end
 
-function SkillSystem:AttackEnemy(enemy)
-    if not character or not character:FindFirstChild("Humanoid") then return end
-    
-    local humanoid = character.Humanoid
-    local rootPart = character.HumanoidRootPart
-    
-    -- Mover hacia el enemigo
-    humanoid:MoveTo(enemy.HumanoidRootPart.Position)
-    
-    -- Simular ataque (esto sería específico del juego)
-    if currentConfig.DebugMode then
-        print("🎯 Atacando enemigo: " .. enemy.Name)
-    end
+function SkillSystem:StartTraining()
+    self.Active = true
+    print("🎯 Auto Entrenamiento ACTIVADO")
 end
 
-function SkillSystem:GetSkillInfo()
-    return {
-        IsTraining = isTraining,
-        CurrentRange = currentConfig.EnemyRange
-    }
+function SkillSystem:StopTraining()
+    self.Active = false
+    print("🎯 Auto Entrenamiento DESACTIVADO")
+end
+
+function SkillSystem:GetEnemyCount()
+    return #self.CurrentEnemies
 end
 
 return SkillSystem
