@@ -1,123 +1,90 @@
--- FruitSystem.lua - Sistema Específico para Frutas
+-- REZO HUB - Fruit System
 local FruitSystem = {}
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
-local character = nil
-local isFarming = false
-local currentConfig = {}
-
--- Configuración de frutas
-local fruitTypes = {
-    "Ice",
-    "Dark",
-    "Light", 
-    "Magma",
-    "Quake",
-    "Bomb",
-    "Spike",
-    "Flame",
-    "Bird: Falcon",
-    "Sand",
-    "Ghost",
-    "Diamond",
-    "Rubber",
-    "Barrier",
-    "Door"
-}
+local RezoHub = nil
 
 function FruitSystem:Initialize(config)
-    currentConfig = config
-    character = player.Character or player.CharacterAdded:Wait()
+    self.Config = config
+    RezoHub = _G.RezoHub or require(script.Parent.MainScript)
+    self.Active = false
+    self.CurrentFruits = {}
     
-    player.CharacterAdded:Connect(function(newChar)
-        character = newChar
-    end)
-    
-    print("✅ Sistema de Frutas inicializado")
+    print("✅ Fruit System inicializado")
 end
 
-function FruitSystem:StartFarming()
-    if isFarming then return end
+function FruitSystem:Update()
+    if not self.Config.AutoFarmFruits or not self.Active then
+        return
+    end
     
-    isFarming = true
-    self:FarmingLoop()
+    self:ScanForFruits()
+    self:CollectNearestFruit()
 end
 
-function FruitSystem:StopFarming()
-    isFarming = false
-end
-
-function FruitSystem:FarmingLoop()
-    coroutine.wrap(function()
-        while isFarming and character and character:FindFirstChild("HumanoidRootPart") do
-            self:FindAndCollectFruits()
-            wait(2) -- Espera entre búsquedas
-        end
-    end)()
-end
-
-function FruitSystem:FindAndCollectFruits()
-    local rootPart = character:FindFirstChild("HumanoidRootPart")
-    if not rootPart then return end
+function FruitSystem:ScanForFruits()
+    self.CurrentFruits = {}
     
-    local fruitsFound = 0
+    local fruitNames = {
+        "Ice", "Dark", "Light", "Magma", "Quake", "Bomb",
+        "Spike", "Flame", "Sand", "Ghost", "Diamond", "Rubber"
+    }
     
-    -- Buscar frutas en el workspace
-    for _, fruitName in ipairs(fruitTypes) do
+    for _, fruitName in ipairs(fruitNames) do
         local fruit = workspace:FindFirstChild(fruitName)
         if fruit and fruit:IsA("Part") then
-            local distance = (fruit.Position - rootPart.Position).Magnitude
-            if distance <= currentConfig.FruitRange then
-                self:CollectFruit(fruit)
-                fruitsFound += 1
-            end
+            table.insert(self.CurrentFruits, fruit)
         end
-    end
-    
-    if currentConfig.DebugMode and fruitsFound > 0 then
-        print("🍊 Encontradas " .. fruitsFound .. " frutas en el rango")
     end
 end
 
-function FruitSystem:CollectFruit(fruit)
-    if not character or not character:FindFirstChild("Humanoid") then return end
+function FruitSystem:CollectNearestFruit()
+    local character = player.Character
+    if not character then return end
     
-    local humanoid = character.Humanoid
-    local rootPart = character.HumanoidRootPart
+    local humanoid = character:FindFirstChild("Humanoid")
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    if not humanoid or not rootPart then return end
     
-    -- Mover al personaje hacia la fruta
-    humanoid:MoveTo(fruit.Position)
+    local nearestFruit = nil
+    local shortestDistance = self.Config.FruitRange
     
-    -- Esperar a llegar cerca
-    local connection
-    connection = RunService.Heartbeat:Connect(function()
-        if not rootPart then 
-            connection:Disconnect()
-            return 
-        end
-        
+    for _, fruit in ipairs(self.CurrentFruits) do
         local distance = (fruit.Position - rootPart.Position).Magnitude
-        if distance < 10 then
-            connection:Disconnect()
-            -- Intentar recolectar la fruta
-            if fruit:FindFirstChild("ClickDetector") then
-                fireclickdetector(fruit.ClickDetector)
-                if currentConfig.DebugMode then
-                    print("✅ Fruta recolectada: " .. fruit.Name)
+        if distance < shortestDistance then
+            shortestDistance = distance
+            nearestFruit = fruit
+        end
+    end
+    
+    if nearestFruit then
+        humanoid:MoveTo(nearestFruit.Position)
+        
+        if shortestDistance < 10 then
+            if nearestFruit:FindFirstChild("ClickDetector") then
+                fireclickdetector(nearestFruit.ClickDetector)
+                if self.Config.DebugMode then
+                    print("🍊 Fruta recolectada: " .. nearestFruit.Name)
                 end
             end
         end
-    end)
+    end
 end
 
-function FruitSystem:GetFruitInfo()
-    return {
-        TotalTypes = #fruitTypes,
-        IsFarming = isFarming,
-        CurrentRange = currentConfig.FruitRange
-    }
+function FruitSystem:StartFarming()
+    self.Active = true
+    print("🌱 Auto Farm de Frutas ACTIVADO")
+end
+
+function FruitSystem:StopFarming()
+    self.Active = false
+    print("🌱 Auto Farm de Frutas DESACTIVADO")
+end
+
+function FruitSystem:GetFruitCount()
+    return #self.CurrentFruits
 end
 
 return FruitSystem
