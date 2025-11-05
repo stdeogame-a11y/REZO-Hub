@@ -1,0 +1,48 @@
+-- MAIN SCRIPT - Blox Fruits Helper
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local player = Players.LocalPlayer
+
+-- Crear carpeta principal para el sistema
+local BloxFruitsSystem = Instance.new("Folder")
+BloxFruitsSystem.Name = "BloxFruitsHelperSystem"
+BloxFruitsSystem.Parent = ReplicatedStorage
+
+-- Módulos
+local MenuManager = require(script.Parent.MenuManager)
+local FruitSystem = require(script.Parent.FruitSystem)
+local ChestSystem = require(script.Parent.ChestSystem)
+local SkillSystem = require(script.Parent.SkillSystem)
+
+-- Sistema de configuración
+local Config = {
+    AutoFarm = false,
+    FruitRange = 50,
+    ChestRange = 30,
+    EnemyRange = 20,
+    DebugMode = true
+}
+
+-- Inicialización principal
+local function initialize()
+    -- Esperar a que el jugador esté listo
+    if not player.Character then
+        player.CharacterAdded:Wait()
+    end
+    
+    -- Inicializar módulos
+    MenuManager:Initialize(Config)
+    FruitSystem:Initialize(Config)
+    ChestSystem:Initialize(Config)
+    SkillSystem:Initialize(Config)
+    
+    print("✅ Sistema Blox Fruits Helper inicializado correctamente")
+    print("📁 Estructura modular cargada:")
+    print("   - MenuManager: Sistema de interfaz")
+    print("   - FruitSystem: Gestión de frutas")
+    print("   - ChestSystem: Gestión de cofres")
+    print("   - SkillSystem: Sistema de habilidades")
+end
+
+-- Ejecutar inicialización
+initialize()
