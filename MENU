@@ -1,23 +1,93 @@
--- MenuScript.lua
+-- ZERO HUB Script para Blox Fruit
+
+-- Configuración
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+
+-- Función para obtener frutas
+local function getFruit()
+    local fruits = {
+        "Banana",  -- Reemplaza con el nombre de la fruta que deseas obtener
+        "Apple",   -- Añade más frutas según sea necesario
+        "Orange"
+    }
+
+    for _, fruitName in ipairs(fruits) do
+        local fruit = game.Workspace:FindFirstChild(fruitName)
+        if fruit then
+            local distance = (fruit.Position - character.PrimaryPart.Position).Magnitude
+            if distance < 50 then  -- Ajusta el rango según sea necesario
+                humanoid:MoveTo(fruit.Position)
+                wait(2)  -- Espera a que el personaje se mueva
+                fireclickdetector(fruit.ClickDetector)
+                wait(1)  -- Espera a que la fruta se recolecte
+            end
+        end
+    end
+end
+
+-- Función para recolectar cofres
+local function collectChests()
+    local chests = workspace:FindFirstChild("Chests")  -- Ajusta según la estructura de tu juego
+    if chests then
+        for _, chest in ipairs(chests:GetChildren()) do
+            local distance = (chest.Position - character.PrimaryPart.Position).Magnitude
+            if distance < 50 then  -- Ajusta el rango según sea necesario
+                humanoid:MoveTo(chest.Position)
+                wait(2)  -- Espera a que el personaje se mueva
+                fireclickdetector(chest.ClickDetector)
+                wait(1)  -- Espera a que el cofre se recolecte
+            end
+        end
+    end
+end
+
+-- Función para mejorar habilidades
+local function improveSkills()
+    -- Añade aquí el código para mejorar tus habilidades
+    -- Por ejemplo, podrías añadir un bucle para atacar a enemigos cercanos
+    while true do
+        local enemies = workspace:FindFirstChild("Enemies")  -- Ajusta según la estructura de tu juego
+        if enemies then
+            for _, enemy in ipairs(enemies:GetChildren()) do
+                local distance = (enemy.Position - character.PrimaryPart.Position).Magnitude
+                if distance < 20 then  -- Ajusta el rango según sea necesario
+                    humanoid:MoveTo(enemy.Position)
+                    wait(1)  -- Espera a que el personaje se mueva
+                    -- Añade aquí el código para atacar al enemigo
+                end
+            end
+        end
+        wait(5)  -- Espera antes de buscar enemigos de nuevo
+    end
+end
 
 -- Configuración del menú
-local player = game.Players.LocalPlayer
-local screenGui = Instance.new("ScreenGui")
-screenGui.Parent = player:WaitForChild("PlayerGui")
+local function createMenu()
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Parent = player:WaitForChild("PlayerGui")
 
-local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 200, 0, 100)
-frame.Position = UDim2.new(0.5, -100, 0.5, -50)
-frame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-frame.Parent = screenGui
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(0, 200, 0, 100)
+    frame.Position = UDim2.new(0.5, -100, 0.5, -50)
+    frame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    frame.Parent = screenGui
 
-local button = Instance.new("TextButton")
-button.Size = UDim2.new(1, 0, 0.5, 0)
-button.Position = UDim2.new(0, 0, 0, 0)
-button.Text = "Abrir Menú"
-button.Parent = frame
+    local button = Instance.new("TextButton")
+    button.Size = UDim2.new(1, 0, 0.5, 0)
+    button.Position = UDim2.new(0, 0, 0, 0)
+    button.Text = "Abrir Menú"
+    button.Parent = frame
 
-button.MouseButton1Click:Connect(function()
-    -- Lógica para abrir el menú
-    print("Menú abierto")
-end)
+    button.MouseButton1Click:Connect(function()
+        -- Lógica para abrir el menú
+        print("Menú abierto")
+    end)
+end
+
+-- Ejecutar funciones
+createMenu()
+getFruit()
+collectChests()
+improveSkills()
